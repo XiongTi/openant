@@ -1,0 +1,8 @@
+.git
+.env
+.DS_Store
+README.md
+LICENSE
+sponsor.png
+push-to-dockerhub.sh
+push-to-ghcr.sh

@@ -226,39 +226,49 @@ cleanup() {
 trap cleanup SIGTERM SIGINT SIGQUIT
 
 
-# 从模板渲染 V2Ray 配置（仅在文件不存在时渲染，保留用户手动修改）
-V2RAY_CONFIG="/home/node/.openclaw/v2ray.json"
-if [ ! -f "$V2RAY_CONFIG" ]; then
-    envsubst < /etc/v2ray/config.json.tpl > "$V2RAY_CONFIG"
-    echo "V2Ray 配置已从模板渲染"
-else
-    echo "V2Ray 配置已存在，跳过渲染"
+# 检查是否配置了代理（VLESS 或 SS）
+HAS_PROXY=false
+if [ -n "$VLESS_ADDRESS" ] || [ -n "$SS_ADDRESS" ]; then
+    HAS_PROXY=true
 fi
 
-# 启动 V2Ray 代理
+# 从模板渲染 V2Ray 配置（仅在代理配置存在时渲染）
 V2RAY_OK=false
-if [ -f "$V2RAY_CONFIG" ]; then
-    echo "=== 启动 V2Ray 代理 ==="
-    /opt/v2ray/v2ray run -config "$V2RAY_CONFIG" &
-    V2RAY_PID=$!
-    # 等待 V2Ray 端口就绪（最多 5 秒）
-    for i in $(seq 1 50); do
-        if curl -s --connect-timeout 1 -o /dev/null http://127.0.0.1:10809 2>/dev/null; then
-            V2RAY_OK=true
-            break
-        fi
-        sleep 0.1
-    done
-    if $V2RAY_OK; then
-        echo "=== V2Ray 已启动 (PID: $V2RAY_PID) ==="
+V2RAY_PID=""
+if $HAS_PROXY; then
+    V2RAY_CONFIG="/home/node/.openclaw/v2ray.json"
+    if [ ! -f "$V2RAY_CONFIG" ]; then
+        envsubst < /etc/v2ray/config.json.tpl > "$V2RAY_CONFIG"
+        echo "V2Ray 配置已从模板渲染"
     else
-        echo "⚠️ V2Ray 未能在 5 秒内就绪，Gateway 将不使用代理启动"
-        kill "$V2RAY_PID" 2>/dev/null || true
-        V2RAY_PID=""
+        echo "V2Ray 配置已存在，跳过渲染"
+    fi
+
+    # 启动 V2Ray 代理
+    if [ -f "$V2RAY_CONFIG" ]; then
+        echo "=== 启动 V2Ray 代理 ==="
+        /opt/v2ray/v2ray run -config "$V2RAY_CONFIG" &
+        V2RAY_PID=$!
+        # 等待 V2Ray 端口就绪（最多 5 秒）
+        for i in $(seq 1 50); do
+            if curl -s --connect-timeout 1 -o /dev/null http://127.0.0.1:10809 2>/dev/null; then
+                V2RAY_OK=true
+                break
+            fi
+            sleep 0.1
+        done
+        if $V2RAY_OK; then
+            echo "=== V2Ray 已启动 (PID: $V2RAY_PID) ==="
+        else
+            echo "⚠️ V2Ray 未能在 5 秒内就绪，Gateway 将不使用代理启动"
+            kill "$V2RAY_PID" 2>/dev/null || true
+            V2RAY_PID=""
+        fi
+    else
+        echo "=== V2Ray 配置文件不存在，跳过 ==="
     fi
 else
-    echo "=== V2Ray 配置文件不存在，跳过 ==="
-    V2RAY_PID=""
+    echo "=== 未配置代理，跳过 V2Ray 启动 ==="
 fi
 
 # 启动 Gateway

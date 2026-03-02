@@ -36,8 +36,11 @@ for ((i=1; i<=AGENT_COUNT; i++)); do
     echo ""
     echo "--- Agent $i ---"
     read -p "  Agent ID (英文唯一标识, 如 agent1): " AGENT_ID
-    read -p "  Agent 名称 (中文, 如 Agent1): " AGENT_NAME
-    read -p "  工作空间目录名 (如 workspace-${AGENT_ID}): " WORKSPACE_NAME
+    # Agent 名称与 Agent ID 保持一致
+    AGENT_NAME=$AGENT_ID
+
+    # 自动生成工作空间目录名
+    WORKSPACE_NAME="workspace-${AGENT_ID}"
 
     if [ $i -eq 1 ]; then
         AGENTS_JSON="${AGENTS_JSON}{\"id\":\"${AGENT_ID}\",\"name\":\"${AGENT_NAME}\",\"workspace\":\"${WORKSPACE_NAME}\"}"
@@ -83,12 +86,16 @@ AGENTS_JSON="${AGENTS_JSON}]"
 echo ""
 echo "=== 3. 网关配置 ==="
 read -p "请输入 Gateway Token: " GW_TOKEN
-read -p "请输入 Gateway 绑定地址 (lan/0.0.0.0): " GW_BIND
-GW_PORT=${GW_PORT:-18789}
-BRIDGE_PORT=${BRIDGE_PORT:-18790}
+GW_BIND="lan"
+GW_PORT=18789
+BRIDGE_PORT=18790
+echo "  Gateway Token: ${GW_TOKEN}"
+echo "  Gateway Bind: ${GW_BIND} (默认)"
+echo "  Gateway Port: ${GW_PORT} (默认)"
+echo "  Bridge Port: ${BRIDGE_PORT} (默认)"
 
 echo ""
-echo "=== 4. 代理配置 (可选) ==="
+echo "=== 4. 代理配置 (可选，如果使用Telegram则必选) ==="
 read -p "是否配置 V2Ray/VLESS 代理? (y/n): " CONFIGURE_VLESS
 if [[ "$CONFIGURE_VLESS" == "y" || "$CONFIGURE_VLESS" == "Y" ]]; then
     read -p "  VLESS 地址: " VLESS_ADDRESS
@@ -105,60 +112,57 @@ if [[ "$CONFIGURE_SS" == "y" || "$CONFIGURE_SS" == "Y" ]]; then
     read -p "  SS 密码: " SS_PASSWORD
 fi
 
-# 生成 .env 文件
+# 生成 .env 文件 (JSON 格式)
 echo ""
 echo "=== 5. 生成配置 ==="
 
-cat > .env << EOF
-# ===== 基础配置 =====
-MODEL_ID=${MODEL_ID}
-BASE_URL=${BASE_URL}
-API_KEY=${API_KEY}
-API_PROTOCOL=${API_PROTOCOL}
-CONTEXT_WINDOW=${CONTEXT_WINDOW}
-MAX_TOKENS=${MAX_TOKENS}
+# 构建 JSON
+ENV_JSON="{"
+ENV_JSON="${ENV_JSON}\"MODEL_ID\": \"${MODEL_ID}\","
+ENV_JSON="${ENV_JSON}\"BASE_URL\": \"${BASE_URL}\","
+ENV_JSON="${ENV_JSON}\"API_KEY\": \"${API_KEY}\","
+ENV_JSON="${ENV_JSON}\"API_PROTOCOL\": \"${API_PROTOCOL}\","
+ENV_JSON="${ENV_JSON}\"CONTEXT_WINDOW\": \"${CONTEXT_WINDOW}\","
+ENV_JSON="${ENV_JSON}\"MAX_TOKENS\": \"${MAX_TOKENS}\","
+ENV_JSON="${ENV_JSON}\"OPENCLAW_AGENTS\": ${AGENTS_JSON},"
 
-# ===== Agent 配置 =====
-OPENCLAW_AGENTS=${AGENTS_JSON}
+if [ -n "$TG_TOKENS" ]; then
+    ENV_JSON="${ENV_JSON}\"TELEGRAM_BOT_TOKEN\": \"${TG_TOKENS}\","
+    ENV_JSON="${ENV_JSON}\"TELEGRAM_BINDINGS\": \"${TG_BINDINGS}\","
+fi
 
-# ===== Telegram 配置 =====
-TELEGRAM_BOT_TOKEN=${TG_TOKENS:-}
-TELEGRAM_BINDINGS=${TG_BINDINGS:-}
+if [ -n "$DD_CLIENT_IDS" ]; then
+    ENV_JSON="${ENV_JSON}\"DINGTALK_CLIENT_ID\": \"${DD_CLIENT_IDS}\","
+    ENV_JSON="${ENV_JSON}\"DINGTALK_CLIENT_SECRET\": \"${DD_CLIENT_SECRETS}\","
+    ENV_JSON="${ENV_JSON}\"DINGTALK_BINDINGS\": \"${DD_BINDINGS}\","
+fi
 
-# ===== DingTalk 配置 =====
-DINGTALK_CLIENT_ID=${DD_CLIENT_IDS:-}
-DINGTALK_CLIENT_SECRET=${DD_CLIENT_SECRETS:-}
-DINGTALK_BINDINGS=${DD_BINDINGS:-}
+ENV_JSON="${ENV_JSON}\"OPENCLAW_GATEWAY_TOKEN\": \"${GW_TOKEN}\","
+ENV_JSON="${ENV_JSON}\"OPENCLAW_GATEWAY_BIND\": \"${GW_BIND}\","
+ENV_JSON="${ENV_JSON}\"OPENCLAW_GATEWAY_PORT\": \"${GW_PORT}\","
+ENV_JSON="${ENV_JSON}\"OPENCLAW_BRIDGE_PORT\": \"${BRIDGE_PORT}\""
 
-# ===== Gateway 配置 =====
-OPENCLAW_GATEWAY_TOKEN=${GW_TOKEN}
-OPENCLAW_GATEWAY_BIND=${GW_BIND:-lan}
-OPENCLAW_GATEWAY_PORT=${GW_PORT}
-OPENCLAW_BRIDGE_PORT=${BRIDGE_PORT}
-EOF
-
-# 添加代理配置
 if [[ "$CONFIGURE_VLESS" == "y" || "$CONFIGURE_VLESS" == "Y" ]]; then
-    cat >> .env << EOF
-
-# ===== VLESS 代理配置 =====
-VLESS_ADDRESS=${VLESS_ADDRESS}
-VLESS_PORT=${VLESS_PORT}
-VLESS_UUID=${VLESS_UUID}
-VLESS_SNI=${VLESS_SNI}
-VLESS_WS_PATH=${VLESS_WS_PATH}
-EOF
+    ENV_JSON="${ENV_JSON},"
+    ENV_JSON="${ENV_JSON}\"VLESS_ADDRESS\": \"${VLESS_ADDRESS}\","
+    ENV_JSON="${ENV_JSON}\"VLESS_PORT\": \"${VLESS_PORT}\","
+    ENV_JSON="${ENV_JSON}\"VLESS_UUID\": \"${VLESS_UUID}\","
+    ENV_JSON="${ENV_JSON}\"VLESS_SNI\": \"${VLESS_SNI}\","
+    ENV_JSON="${ENV_JSON}\"VLESS_WS_PATH\": \"${VLESS_WS_PATH}\""
 fi
 
 if [[ "$CONFIGURE_SS" == "y" || "$CONFIGURE_SS" == "Y" ]]; then
-    cat >> .env << EOF
-
-# ===== Shadowsocks 代理配置 =====
-SS_ADDRESS=${SS_ADDRESS}
-SS_PORT=${SS_PORT}
-SS_PASSWORD=${SS_PASSWORD}
-EOF
+    if [[ "$CONFIGURE_VLESS" != "y" && "$CONFIGURE_VLESS" != "Y" ]]; then
+        ENV_JSON="${ENV_JSON},"
+    fi
+    ENV_JSON="${ENV_JSON}\"SS_ADDRESS\": \"${SS_ADDRESS}\","
+    ENV_JSON="${ENV_JSON}\"SS_PORT\": \"${SS_PORT}\","
+    ENV_JSON="${ENV_JSON}\"SS_PASSWORD\": \"${SS_PASSWORD}\""
 fi
+
+ENV_JSON="${ENV_JSON}}"
+
+echo "$ENV_JSON" | python3 -m json.tool > .env
 
 echo ""
 echo "${GREEN}配置生成完成!${NC}"
