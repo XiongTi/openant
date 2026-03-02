@@ -1,0 +1,9 @@
+#!/bin/bash
+# Claude Code 代理启动器
+# 用法: ./claude-proxy [选项]
+
+export HTTP_PROXY=http://127.0.0.1:10809
+export HTTPS_PROXY=http://127.0.0.1:10809
+export ALL_PROXY=http://127.0.0.1:10809
+
+/usr/local/bin/claude "$@"

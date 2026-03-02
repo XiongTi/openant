@@ -1,0 +1,41 @@
+{
+  "meta": { "lastTouchedVersion": "2026.2.14" },
+  "update": { "checkOnStart": false },
+  "browser": {
+    "headless": true,
+    "noSandbox": true,
+    "defaultProfile": "openclaw",
+    "executablePath": "/usr/bin/chromium"
+  },
+  "models": { "mode": "merge", "providers": { "default": { "models": [] } } },
+  "agents": {
+    "defaults": {
+      "compaction": { "mode": "safeguard" },
+      "elevatedDefault": "full",
+      "maxConcurrent": 4,
+      "subagents": { "maxConcurrent": 8 }
+    }
+  },
+  "messages": { "ackReactionScope": "group-mentions", "tts": { "edge": { "voice": "zh-CN-XiaoxiaoNeural" } } },
+  "commands": { "native": "auto", "nativeSkills": "auto" },
+  "channels": {},
+  "plugins": { "entries": {}, "installs": {} },
+  "gateway": {
+    "controlUi": {
+      "dangerouslyAllowHostHeaderOriginFallback": true
+    }
+  },
+  "memory": {
+    "backend": "qmd",
+    "qmd": {
+	"command": "/usr/local/bin/qmd",
+        "paths": [
+          {
+            "path": "/home/node/.openclaw/workspace",
+            "name": "workspace",
+            "pattern": "**/*.md"
+          }
+        ]
+    }
+  }
+}
