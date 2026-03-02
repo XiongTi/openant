@@ -37,9 +37,7 @@ for ((i=1; i<=AGENT_COUNT; i++)); do
     echo "--- Agent $i ---"
     read -p "  Agent ID (英文唯一标识, 如 agent1): " AGENT_ID
     read -p "  Agent 名称 (中文, 如 Agent1): " AGENT_NAME
-
-    # 自动生成工作空间目录名
-    WORKSPACE_NAME="workspace-${AGENT_ID}"
+    read -p "  工作空间目录名 (如 workspace-${AGENT_ID}): " WORKSPACE_NAME
 
     if [ $i -eq 1 ]; then
         AGENTS_JSON="${AGENTS_JSON}{\"id\":\"${AGENT_ID}\",\"name\":\"${AGENT_NAME}\",\"workspace\":\"${WORKSPACE_NAME}\"}"
