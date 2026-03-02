@@ -102,7 +102,7 @@ RUN mkdir -p /tmp/extensions \
     && git clone --depth 1 https://github.com/soimy/openclaw-channel-dingtalk.git \
     && cd openclaw-channel-dingtalk \
     && rm -rf .git \
-    && npm install --no-audit --no-fund \
+    && npm install --no-audit --no-fund --legacy-peer-deps \
     && timeout 600 openclaw plugins install -l . 2>/dev/null || true \
     && cd /tmp \
     && git clone --depth 1 https://github.com/justlovemaki/qqbot.git \
