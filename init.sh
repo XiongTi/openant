@@ -185,9 +185,9 @@ echo "Gateway 端口: $OPENCLAW_GATEWAY_PORT"
 echo "Gateway 绑定: $OPENCLAW_GATEWAY_BIND"
 
 # 复制 workspace、skills、extensions 到正确位置（支持挂载卷场景）
-if [ -d /tmp/workspace ]; then
-    cp -r /tmp/workspace /home/node/.openclaw/ 2>/dev/null || true
-fi
+#if [ -d /tmp/workspace ]; then
+#    cp -r /tmp/workspace /home/node/.openclaw/ 2>/dev/null || true
+#fi
 if [ -d /tmp/skills ]; then
     cp -r /tmp/skills /home/node/.openclaw/ 2>/dev/null || true
 fi
