@@ -1,6 +1,7 @@
 ## 项目简介
 
 OpenClaw 中国 IM 插件整合版 Docker 镜像，预装并配置了飞书、钉钉、QQ机器人、企业微信等主流中国 IM 平台插件，让您可以快速部署一个支持多个中国 IM 平台的 AI 机器人网关。
+魔改于：https://github.com/justlovemaki/OpenClaw-Docker-CN-IM
 
 ### 核心特性
 
