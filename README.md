@@ -129,10 +129,6 @@ docker-compose up -d
 - 检查 API Key 是否正确配置
 - 确认环境变量 `API_KEY` 已设置
 
-### Q: 模型不可用？
-
-- 在 AIClient-2-API Web UI 确认已配置对应提供商
-- 重启容器：`docker-compose restart`
 
 ### Q: 飞书机器人能发消息但收不到消息？
 
@@ -168,63 +164,6 @@ TELEGRAM_BINDINGS=bot1:agent1,bot2:agent2
 - `TELEGRAM_BOT_TOKEN`: `账号名:数字:Token`（数字部分是 Telegram API 的 bot token 前缀）
 - `TELEGRAM_BINDINGS`: `账号名:AgentID`
 
-### Q: 同样的启动命令，为什么有人报错 `Permission denied`？
-
-这通常不是命令本身不稳定，而是**运行上下文变化**导致：宿主机挂载目录所有者（UID/GID）与容器内进程用户不一致。
-
-#### 为什么会“偶发”
-
-- 同样是 `docker compose up -d`，但目录来源不同：
-  - 你手动创建目录：可能是当前用户（如 `1000:1000`）
-  - Docker 自动创建或使用 sudo 创建：可能是 `root:root`（`0:0`）
-- 本镜像最终以 `node` 用户运行网关；若挂载目录归属不匹配，就可能无法写入。
-
-#### 快速排查
-
-```bash
-# 1) 看宿主机目录归属（Linux）
-ls -ln ~/.openclaw
-
-# 2) 看容器内运行用户
-docker run --rm justlikemaki/openclaw-docker-cn-im:latest id
-```
-
-若容器用户是 `uid=1000`，而宿主机目录是 `uid=0` 且权限不足，就会报错。
-
-#### 解决方案（推荐顺序）
-
-1. **宿主机修正目录所有权（最直接）**
-
-```bash
-sudo chown -R 1000:1000 ~/.openclaw
-```
-
-2. **显式指定容器运行用户（可选）**
-
-在 `.env` 中设置：
-
-```bash
-OPENCLAW_RUN_USER=1000:1000
-```
-
-然后重启：
-
-```bash
-docker compose up -d
-```
-
-3. **SELinux 场景（CentOS/RHEL/Fedora）**
-
-若权限看起来没问题但仍拒绝访问，请给挂载卷加 `:z` 或 `:Z` 标签。
-
-#### 本项目已做的稳态处理
-
-- [`docker-compose.yml`](docker-compose.yml) 新增可选 `user` 配置：`OPENCLAW_RUN_USER`（默认 `0:0`）
-- [`init.sh`](init.sh) 启动时会：
-  - 打印挂载目录当前 UID/GID 与目标 UID/GID
-  - 尝试自动修复 `/home/node/.openclaw` 权限
-  - 若仍不可写，输出明确的修复命令并失败退出，避免“有时成功有时报错”的隐性状态
----
 
 ## 注意事项
 
