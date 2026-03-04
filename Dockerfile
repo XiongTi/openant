@@ -72,12 +72,12 @@ RUN pip3 install --no-cache-dir uv openai-whisper edge-tts --break-system-packag
 RUN printf '[url "https://github.com/"]\n\tinsteadOf = ssh://git@github.com/\n[url "https://github.com/"]\n\tinsteadOf = git@github.com:\n[url "https://github.com/"]\n\tinsteadOf = git+ssh://git@github.com/\n[url "https://github.com/"]\n\tinsteadOf = git://github.com/\n' > /root/.gitconfig
 
 # 安装 bun + 全局 npm 包 + 清理编译工具和缓存
-# 跳过 optional 依赖（如 libsignal-node）避免 git 依赖问题
+# 使用 --ignore-scripts 跳过 postinstall，避免 git 依赖问题
 RUN npm config set fetch-retries 5 \
   && npm config set fetch-retry-mintimeout 20000 \
   && npm config set fetch-retry-maxtimeout 120000 \
   && npm install -g bun --registry=https://registry.npmmirror.com \
-  && npm install -g --omit=optional --prefer-online --no-audit --no-fund @tobilu/qmd openclaw@latest --registry=https://registry.npmmirror.com \
+  && npm install -g --ignore-scripts --prefer-online --no-audit --no-fund @tobilu/qmd openclaw@latest --registry=https://registry.npmmirror.com \
   && (npm install -g --no-audit --no-fund @anthropic-ai/claude-code opencode-ai@latest playwright playwright-extra puppeteer-extra-plugin-stealth --registry=https://registry.npmmirror.com || true) \
   && apt-get purge -y --auto-remove make g++ \
   && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
