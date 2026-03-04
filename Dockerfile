@@ -124,10 +124,8 @@ RUN mkdir -p /tmp/extensions \
 # 切换回 root 用户继续后续操作
 USER root
 
-# 清理飞书插件、安装 V2Ray（使用多个镜像源重试）
-RUN (wget -q --timeout=60 --tries=3 https://mirror.ghproxy.com/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip || \
-     wget -q --timeout=60 --tries=3 https://ghproxy.com/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip || \
-     wget -q --timeout=60 --tries=3 https://gh.api.99988866.xyz/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip) \
+# 清理飞书插件、安装 V2Ray
+RUN wget -q --timeout=120 --tries=5 https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip \
     && unzip -q /tmp/v2ray.zip -d /opt/v2ray \
     && rm /tmp/v2ray.zip
 
