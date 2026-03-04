@@ -69,7 +69,11 @@ RUN apt-get update \
 RUN pip3 install --no-cache-dir uv openai-whisper edge-tts --break-system-packages -i https://mirrors.aliyun.com/pypi/simple/
 
 # 强制 git 使用 HTTPS 而非 SSH（每种 URL 格式需要独立的 section）
-RUN printf '[url "https://github.com/"]\n\tinsteadOf = ssh://git@github.com/\n[url "https://github.com/"]\n\tinsteadOf = git@github.com:\n[url "https://github.com/"]\n\tinsteadOf = git+ssh://git@github.com/\n[url "https://github.com/"]\n\tinsteadOf = git://github.com/\n' > /root/.gitconfig
+# 配置 git 使用国内镜像加速
+RUN printf '[url "https://mirror.ghproxy.com/https://github.com/"]\n\tinsteadOf = https://github.com/\n[url "https://mirror.ghproxy.com/https://github.com/"]\n\tinsteadOf = ssh://git@github.com/\n[url "https://mirror.ghproxy.com/https://github.com/"]\n\tinsteadOf = git@github.com:\n[url "https://mirror.ghproxy.com/https://github.com/"]\n\tinsteadOf = git+ssh://git@github.com/\n[url "https://mirror.ghproxy.com/https://github.com/"]\n\tinsteadOf = git://github.com/\n' > /root/.gitconfig \
+  && git config --global http.postBuffer 524288000 \
+  && git config --global http.lowSpeedLimit 0 \
+  && git config --global http.lowSpeedTime 999999
 
 # 安装 bun + 全局 npm 包 + 清理编译工具和缓存
 RUN npm config set fetch-retries 5 \
@@ -97,15 +101,20 @@ USER node
 # RUN timeout 300 openclaw plugins install @m1heng-clawd/feishu || true
 
 # 安装插件到临时目录（VOLUME 挂载会覆盖 .openclaw，所以装到 /tmp/extensions，init.sh 启动时复制）
+# 使用重试机制和国内镜像源
 RUN mkdir -p /tmp/extensions \
     && cd /tmp/extensions \
-    && git clone --depth 1 https://github.com/soimy/openclaw-channel-dingtalk.git \
+    && for i in 1 2 3; do \
+         git clone --depth 1 https://github.com/soimy/openclaw-channel-dingtalk.git && break || sleep 10; \
+       done \
     && cd openclaw-channel-dingtalk \
     && rm -rf .git \
-    && npm install --no-audit --no-fund --legacy-peer-deps \
+    && npm install --no-audit --no-fund --legacy-peer-deps --registry=https://registry.npmmirror.com \
     && timeout 600 openclaw plugins install -l . 2>/dev/null || true \
     && cd /tmp \
-    && git clone --depth 1 https://github.com/justlovemaki/qqbot.git \
+    && for i in 1 2 3; do \
+         git clone --depth 1 https://github.com/justlovemaki/qqbot.git && break || sleep 10; \
+       done \
     && cd qqbot \
     && rm -rf .git \
     && timeout 300 openclaw plugins install . 2>/dev/null || true \
@@ -115,8 +124,10 @@ RUN mkdir -p /tmp/extensions \
 # 切换回 root 用户继续后续操作
 USER root
 
-# 清理飞书插件、安装 V2Ray
-RUN wget -q https://ghfast.top/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip \
+# 清理飞书插件、安装 V2Ray（使用多个镜像源重试）
+RUN (wget -q --timeout=60 --tries=3 https://mirror.ghproxy.com/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip || \
+     wget -q --timeout=60 --tries=3 https://ghproxy.com/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip || \
+     wget -q --timeout=60 --tries=3 https://gh.api.99988866.xyz/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip -O /tmp/v2ray.zip) \
     && unzip -q /tmp/v2ray.zip -d /opt/v2ray \
     && rm /tmp/v2ray.zip
 
